@@ -41,6 +41,7 @@ async function run() {
         const db = client.db('shop');
 
         const cardCollection = db.collection('productsCollaction');
+        const cartCollection = db.collection("cartCollection")
 
         app.get('/cardCollection', async (req, res) => {
             const result = await cardCollection.find().toArray();
@@ -53,6 +54,26 @@ async function run() {
             const result = await cardCollection.findOne(query);
             res.send(result);
         });
+
+        app.get("/carts", async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+              res.send([]);
+            };
+
+            const query = { email: email };
+            const results = await cartCollection.find(query).toArray();
+            // console.log(results)
+            res.send(results)
+          })
+
+        app.post("/carts", async (req, res) => {
+            const carts = req.body;
+            // console.log(carts)
+            const result = await cartCollection.insertOne(carts);
+            res.send(result)
+        });
+
 
 
         // Send a ping to confirm a successful connection
