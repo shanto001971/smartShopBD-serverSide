@@ -14,7 +14,7 @@ const corsOptions = {
 
 
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -37,7 +37,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
+        await client.connect();
         const db = client.db('shop');
 
         const cardCollection = db.collection('productsCollaction');
@@ -54,18 +54,25 @@ async function run() {
             const result = await cardCollection.findOne(query);
             res.send(result);
         });
+        app.get('/cardCollection/:id', async (req, res) => {
+            const id = req.params.id;
+            // console.log(id)
+            const query = { _id: new ObjectId(id) };
+            const result = await cartCollection.find(query).toArray()
+            res.send(result);
+        });
 
         app.get("/carts", async (req, res) => {
             const email = req.query.email;
             if (!email) {
-              res.send([]);
+                res.send([]);
             };
 
             const query = { email: email };
             const results = await cartCollection.find(query).toArray();
             // console.log(results)
             res.send(results)
-          })
+        })
 
         app.post("/carts", async (req, res) => {
             const carts = req.body;
@@ -74,13 +81,32 @@ async function run() {
             res.send(result)
         });
 
+        app.get('/api/search', async (req, res) => {
+            try {
+                const { query, category } = req.query;
+        
+                let filter = {};
+                if (query) {
+                    filter.productTitle = { $regex: `.*${query}.*`, $options: 'i' };
+                    // Case-insensitive search with any substring of the product title
+                }
+                if (category) {
+                    filter.category = category; // Filter by category
+                }
+        
+                const results = await cardCollection.find(filter).toArray();
+                res.send(results);
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        });
 
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // Ensures that the client will close when you finish/error
         // await client.close();
     }
 }
