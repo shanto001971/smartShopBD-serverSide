@@ -14,7 +14,7 @@ const corsOptions = {
 
 
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -37,7 +37,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
         const db = client.db('shop');
 
         const cardCollection = db.collection('productsCollaction');
@@ -83,8 +83,8 @@ async function run() {
 
         app.get('/api/search', async (req, res) => {
             try {
-                const { query, category } = req.query;
-        
+                const { query, category,page = 1, pageSize = 10  } = req.query;
+
                 let filter = {};
                 if (query) {
                     filter.productTitle = { $regex: `.*${query}.*`, $options: 'i' };
@@ -93,8 +93,9 @@ async function run() {
                 if (category) {
                     filter.category = category; // Filter by category
                 }
-        
-                const results = await cardCollection.find(filter).toArray();
+                const skip = (page - 1) * pageSize;
+                const results = await cardCollection.find(filter).skip(skip).limit(parseInt(pageSize)).toArray();
+
                 res.send(results);
             } catch (error) {
                 console.error(error);
