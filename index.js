@@ -43,6 +43,7 @@ async function run() {
         const cardCollection = db.collection('productsCollaction');
         const cartCollection = db.collection("cartCollection");
         const proceedCollection = db.collection("proceedCollection");
+        const sellerProfileCollection = db.collection("sellerProfileCollection");
 
         app.get('/cardCollection', async (req, res) => {
             const result = await cardCollection.find().toArray();
@@ -135,6 +136,18 @@ async function run() {
             // console.log(product)
             const result = await proceedCollection.insertOne(product);
             res.send(result)
+        });
+
+        app.post('/sellerProfile', async (req, res) => {
+            try {
+                const sellerProfile = req.body;
+                const result = await sellerProfileCollection.insertOne(sellerProfile);
+                res.send(result);
+            } catch (error) {
+                // Handle any errors that occurred during processing
+                console.error(error);
+                res.status(500).json({ success: false, error: 'Internal Server Error' });
+            }
         });
 
         app.delete("/carts", async (req, res) => {
