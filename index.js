@@ -111,6 +111,43 @@ async function run() {
             res.send(results)
         })
 
+        app.get('/users/admin/:email', async (req, res) => {
+            try {
+                const userEmail = req.params.email;
+                // Query the database to find the user with the specified email
+                const user = await usersCollection.findOne({ email: userEmail });
+
+                if (user && user.roll && user.roll.admin) {
+                    res.send({ admin: true });
+                } else {
+                    res.send({ admin: false });
+                }
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.get('/users/seller/:email', async (req, res) => {
+            try {
+                const userEmail = req.params.email;
+                console.log(userEmail)
+                // Query the database to find the user with the specified email
+                const user = await sellerProfileCollection.findOne({ email: userEmail });
+                
+
+                if (user && user.roll && user.roll.seller) {
+                    res.send({ seller: true });
+                } else {
+                    res.send({ seller: false });
+                }
+            } catch (error) {
+                console.error('Error checking seller status:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+
 
         app.post("/carts", async (req, res) => {
             const carts = req.body;
@@ -140,15 +177,23 @@ async function run() {
 
         app.post('/sellerProfile', async (req, res) => {
             try {
-                const sellerProfile = req.body;
+                const { sellerProfile } = req.body;
+                const existingProfile = await sellerProfileCollection.findOne({ email: sellerProfile.email });
+
+                if (existingProfile) {
+                    // If the email already exists, respond with an error
+                    return res.status(400).send({ success: false, error: 'Email already in use' });
+                }
+
                 const result = await sellerProfileCollection.insertOne(sellerProfile);
-                res.send(result);
+                res.status(201).send({ success: true, data: result });
             } catch (error) {
                 // Handle any errors that occurred during processing
                 console.error(error);
                 res.status(500).json({ success: false, error: 'Internal Server Error' });
             }
         });
+
 
         app.delete("/carts", async (req, res) => {
             const productIds = req.body.productIds;
