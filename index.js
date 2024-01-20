@@ -131,12 +131,11 @@ async function run() {
         app.get('/users/seller/:email', async (req, res) => {
             try {
                 const userEmail = req.params.email;
-                console.log(userEmail)
                 // Query the database to find the user with the specified email
                 const user = await sellerProfileCollection.findOne({ email: userEmail });
-                
 
-                if (user && user.roll && user.roll.seller) {
+
+                if (user && user.roll && user?.roll?.seller === true) {
                     res.send({ seller: true });
                 } else {
                     res.send({ seller: false });
