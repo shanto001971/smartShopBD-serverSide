@@ -1,10 +1,12 @@
+// Import necessary modules and libraries
 const express = require('express');
 const app = express();
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
+// Set up CORS options for cross-origin resource sharing
 const corsOptions = {
     origin: '*',
     credentials: true,
@@ -13,16 +15,17 @@ const corsOptions = {
 
 
 
-
+// Use CORS middleware and parse JSON requests
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Define a simple root route
 app.get('/', (req, res) => {
     res.send('Hello my dear smartShopBD server is running');
 });
 
 
-
+// MongoDB connection URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mi7otul.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,6 +37,7 @@ const client = new MongoClient(uri, {
     }
 });
 
+// Async function to run the server and connect to MongoDB
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -45,10 +49,15 @@ async function run() {
         const proceedCollection = db.collection("proceedCollection");
         const sellerProfileCollection = db.collection("sellerProfileCollection");
 
+        // Define various API endpoints for CRUD operations on collections
+
+        // Get all products from 'productsCollaction'
         app.get('/cardCollection', async (req, res) => {
             const result = await cardCollection.find().toArray();
             res.send(result);
         });
+
+        // Get a single product by ID from 'productsCollaction'
         app.get('/cardCollection/:id', async (req, res) => {
             const id = req.params.id;
             // console.log(id)
@@ -56,6 +65,8 @@ async function run() {
             const result = await cardCollection.findOne(query);
             res.send(result);
         });
+
+        // Get a single product by ID from 'productsCollaction'
         app.get('/cardCollection/:id', async (req, res) => {
             const id = req.params.id;
             // console.log(id)
@@ -64,6 +75,7 @@ async function run() {
             res.send(result);
         });
 
+        // Get cart items by user email from 'cartCollection'
         app.get("/carts", async (req, res) => {
             const email = req.query.email;
             if (!email) {
@@ -76,6 +88,7 @@ async function run() {
             res.send(results)
         })
 
+        // Search products by query and category
         app.get('/api/search', async (req, res) => {
             try {
                 const { query, category, page = 1, pageSize = 10 } = req.query;
@@ -98,6 +111,7 @@ async function run() {
             }
         });
 
+        // Get confirmed orders by user email from 'proceedCollection'
         app.get("/confirmOrder", async (req, res) => {
             const email = req.query.email;
             // console.log(email)
@@ -111,6 +125,7 @@ async function run() {
             res.send(results)
         })
 
+        // Check if a user has admin privileges
         app.get('/users/admin/:email', async (req, res) => {
             try {
                 const userEmail = req.params.email;
@@ -128,6 +143,7 @@ async function run() {
             }
         });
 
+        // Check if a user has seller privileges
         app.get('/users/seller/:email', async (req, res) => {
             try {
                 const userEmail = req.params.email;
@@ -147,7 +163,7 @@ async function run() {
         });
 
 
-
+        // Add items to the cart
         app.post("/carts", async (req, res) => {
             const carts = req.body;
             // console.log(carts)
@@ -155,6 +171,7 @@ async function run() {
             res.send(result)
         });
 
+        // Proceed to checkout and add items to 'proceedCollection'
         app.post("/proceedToCheckOut", async (req, res) => {
             try {
                 const product = req.body.product;
@@ -167,6 +184,7 @@ async function run() {
             }
         });
 
+        // Place an order and add items to 'proceedCollection'
         app.post("/placeOrder", async (req, res) => {
             const product = req.body;
             // console.log(product)
@@ -174,6 +192,7 @@ async function run() {
             res.send(result)
         });
 
+        // Create a seller profile
         app.post('/sellerProfile', async (req, res) => {
             try {
                 const { sellerProfile } = req.body;
@@ -193,7 +212,7 @@ async function run() {
             }
         });
 
-
+        // Delete all items from the cart
         app.delete("/carts", async (req, res) => {
             const productIds = req.body.productIds;
             // console.log(productIds)
@@ -205,6 +224,7 @@ async function run() {
             res.send(result)
         });
 
+        // Delete single items from the cart
         app.delete("/cart/:id", (req, res) => {
             const { id } = req.params;
             const query = { _id: new ObjectId(id) };
@@ -212,6 +232,7 @@ async function run() {
             res.send(result);
         });
 
+        // Cancel an order in 'proceedCollection'
         app.delete("/cancelOrder/:id", async (req, res) => {
             try {
                 const { id } = req.params;
