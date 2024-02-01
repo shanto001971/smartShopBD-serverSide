@@ -3,6 +3,8 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config(); // Load environment variables
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
@@ -37,6 +39,28 @@ const client = new MongoClient(uri, {
     }
 });
 
+const verifyJWT = (req, res, next) => {
+	const authorization = req.headers.authorization;
+	if (!authorization) {
+		return res
+			.status(401)
+			.send({ error: true, message: 'unauthorized access' });
+	}
+	// bearer token
+	const token = authorization.split(' ')[1];
+
+	jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+		if (err) {
+			return res
+				.status(401)
+				.send({ error: true, message: 'unauthorized access' });
+		}
+		req.decoded = decoded;
+		next();
+	});
+};
+
+
 // Async function to run the server and connect to MongoDB
 async function run() {
     try {
@@ -47,9 +71,15 @@ async function run() {
         const cardCollection = db.collection('productsCollaction');
         const cartCollection = db.collection("cartCollection");
         const proceedCollection = db.collection("proceedCollection");
-        const sellerProfileCollection = db.collection("sellerProfileCollection");
+        const userCollection = db.collection("sellerProfileCollection");
 
         // Define various API endpoints for CRUD operations on collections
+
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+            res.send({token});
+        })
 
         // Get all products from 'productsCollaction'
         app.get('/cardCollection', async (req, res) => {
@@ -66,17 +96,8 @@ async function run() {
             res.send(result);
         });
 
-        // Get a single product by ID from 'productsCollaction'
-        app.get('/cardCollection/:id', async (req, res) => {
-            const id = req.params.id;
-            // console.log(id)
-            const query = { _id: new ObjectId(id) };
-            const result = await cartCollection.find(query).toArray()
-            res.send(result);
-        });
-
         // Get cart items by user email from 'cartCollection'
-        app.get("/carts", async (req, res) => {
+        app.get("/carts",verifyJWT, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
@@ -112,8 +133,9 @@ async function run() {
         });
 
         // Get confirmed orders by user email from 'proceedCollection'
-        app.get("/confirmOrder", async (req, res) => {
+        app.get("/confirmOrder",verifyJWT, async (req, res) => {
             const email = req.query.email;
+           
             // console.log(email)
             if (!email) {
                 res.send([]);
@@ -130,7 +152,7 @@ async function run() {
             try {
                 const userEmail = req.params.email;
                 // Query the database to find the user with the specified email
-                const user = await usersCollection.findOne({ email: userEmail });
+                const user = await userCollection.findOne({ email: userEmail });
 
                 if (user && user.roll && user.roll.admin) {
                     res.send({ admin: true });
@@ -144,23 +166,23 @@ async function run() {
         });
 
         // Check if a user has seller privileges
-        app.get('/users/seller/:email', async (req, res) => {
-            try {
-                const userEmail = req.params.email;
-                // Query the database to find the user with the specified email
-                const user = await sellerProfileCollection.findOne({ email: userEmail });
+        // app.get('/users/seller/:email', async (req, res) => {
+        //     try {
+        //         const userEmail = req.params.email;
+        //         // Query the database to find the user with the specified email
+        //         const user = await userCollection.findOne({ email: userEmail });
 
 
-                if (user && user.roll && user?.roll?.seller === true) {
-                    res.send({ seller: true });
-                } else {
-                    res.send({ seller: false });
-                }
-            } catch (error) {
-                console.error('Error checking seller status:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
+        //         if (user && user.roll && user?.roll?.seller === true) {
+        //             res.send({ seller: true });
+        //         } else {
+        //             res.send({ seller: false });
+        //         }
+        //     } catch (error) {
+        //         console.error('Error checking seller status:', error);
+        //         res.status(500).send({ error: 'Internal Server Error' });
+        //     }
+        // });
 
 
         // Add items to the cart
@@ -196,14 +218,14 @@ async function run() {
         app.post('/sellerProfile', async (req, res) => {
             try {
                 const { sellerProfile } = req.body;
-                const existingProfile = await sellerProfileCollection.findOne({ email: sellerProfile.email });
+                const existingProfile = await userCollection.findOne({ email: sellerProfile.email });
 
                 if (existingProfile) {
                     // If the email already exists, respond with an error
                     return res.status(400).send({ success: false, error: 'Email already in use' });
                 }
 
-                const result = await sellerProfileCollection.insertOne(sellerProfile);
+                const result = await userCollection.insertOne(sellerProfile);
                 res.status(201).send({ success: true, data: result });
             } catch (error) {
                 // Handle any errors that occurred during processing
@@ -211,6 +233,82 @@ async function run() {
                 res.status(500).json({ success: false, error: 'Internal Server Error' });
             }
         });
+
+
+        app.post('/register', async (req, res) => {
+            try {
+                const { fullName, email, password, role } = req.body;
+
+                const user = await userCollection.findOne({ email: email });
+
+                if (user) {
+                    return res.status(400).json({ message: 'Email already in use' });
+                }
+
+
+                const hashedPassword = await bcrypt.hash(password, 10);
+
+                const newUser = {
+                    fullName,
+                    email,
+                    password: hashedPassword,
+                    role,
+                    // Add additional fields as needed
+                    verified: false, // For email verification
+                };
+
+                // Insert the new user into the user collection
+                const result = await userCollection.insertOne(newUser);
+
+                console.log(result)
+
+                if (result.insertedId) {
+                    res.status(201).json({ message: 'User registered successfully.' });
+                } else {
+                    res.status(500).json({ message: 'User registration failed' });
+                }
+            } catch (error) {
+                if (error.code === 11000 || error.code === 11001) {
+                    // Duplicate key error, email already exists
+                    return res.status(400).json({ message: 'Email address already exists' });
+                }
+
+                console.error('Error during registration:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+
+        app.post('/auth/login', async (req, res) => {
+            // console.log(req.body)
+            try {
+                const { email, password } = req.body;
+
+                const user = await userCollection.findOne({ email: email });
+
+                // Check if the user exists
+                if (!user) {
+                    return res.status(401).json({ message: 'Invalid email or password' });
+                }
+
+                const isPasswordValid = await bcrypt.compare(password, user.password);
+                // console.log(isPasswordValid)
+
+                // If the password is not valid, return an error
+                if (!isPasswordValid) {
+                    return res.status(401).json({ message: 'Invalid email or password' });
+                }
+
+                const token = jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+
+                res.status(201).send(user);
+            } catch (error) {
+                console.error('Error:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+
+
+
 
         // Delete all items from the cart
         app.delete("/carts", async (req, res) => {
