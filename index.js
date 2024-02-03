@@ -166,23 +166,18 @@ async function run() {
         });
 
         // Check if a user has seller privileges
-        // app.get('/users/seller/:email', async (req, res) => {
-        //     try {
-        //         const userEmail = req.params.email;
-        //         // Query the database to find the user with the specified email
-        //         const user = await userCollection.findOne({ email: userEmail });
-
-
-        //         if (user && user.roll && user?.roll?.seller === true) {
-        //             res.send({ seller: true });
-        //         } else {
-        //             res.send({ seller: false });
-        //         }
-        //     } catch (error) {
-        //         console.error('Error checking seller status:', error);
-        //         res.status(500).send({ error: 'Internal Server Error' });
-        //     }
-        // });
+        app.get('/users/seller/:id',verifyJWT, async (req, res) => {
+            try {
+                const {id} = req.params;
+                const query = { _id: new ObjectId(id) }
+                // Query the database to find the user with the specified id
+                const user = await userCollection.findOne(query);
+                res.send(user);
+            } catch (error) {
+                console.error('Error checking seller status:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
 
 
         // Add items to the cart
