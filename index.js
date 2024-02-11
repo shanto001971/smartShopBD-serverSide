@@ -61,7 +61,7 @@ const verifyJWT = (req, res, next) => {
 };
 
 
-// Async function to run the server and connect to MongoDB
+// Async function to run the server and connect to MongoDB 
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
