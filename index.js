@@ -278,6 +278,10 @@ async function run() {
             }
         });
 
+        app.post('/addProduct',(req,res)=>{
+            
+        })
+
 
 
         // Delete all items from the cart
