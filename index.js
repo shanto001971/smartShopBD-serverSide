@@ -278,8 +278,9 @@ async function run() {
             }
         });
 
+        // send add product data form database
         app.post('/addProduct',(req,res)=>{
-            
+            console.log(req.body)
         })
 
 
